@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <script src="https://apps.bdimg.com/libs/jquery/2.1.4/jquery.min.js"></script>
+    <script src="http://passport.cnblogs.com/scripts/jsencrypt.min.js"></script>
+    <script src="https://cdn.bootcss.com/blueimp-md5/2.10.0/js/md5.min.js"></script>
+    <script type="text/javascript">
+        window.onload = function(){
+            // 获取公钥
+            var httpRequest = new XMLHttpRequest();//第一步：建立所需的对象
+            httpRequest.open('GET', 'http://localhost:5000/public_key', true);//第二步：打开连接  将请求参数写在url中  ps:"http://localhost:8080/rest/xxx"
+            httpRequest.send();//第三步：发送请求  将请求参数写在URL中
+            //获取数据后的处理程序
+            httpRequest.onreadystatechange = function () {
+                if (httpRequest.readyState == 4 && httpRequest.status == 200) {
+                    var res = httpRequest.responseText;//获取到json字符串，还需解析
+                    data = JSON.parse(res)
+                    window.public_key = data.public_key
+                    console.log("公钥:", data.public_key)
+                }
+            };
+        }
+
+    </script>
+</head>
+<body>
+    <!--<form action="/a" enctype="multipart/form-data" method="post" onsubmit="encrypt()">-->
+    <form>
+        用户名：<input name="uname" type="text" id="uname" /> <br>
+        密码  ：<input name="pwd" type="password" minlength="8" maxlength="26" id="pwd" /> <br>
+    </form>
+ <button type="submit" id="loginBtn" onclick="login()">登录</button>
+<button type="submit" id="registerBtn" onclick="register()">注册</button>
+</body>
+<script type="text/javascript">
+    // 用公钥加密数据
+    function encrypt_data(data) {
+        console.log("加密前数据为:", data)
+        const encryptor=new JSEncrypt();
+        encryptor.setPublicKey(window.public_key);
+        enc_pwd = encryptor.encrypt(data)
+        console.log("加密后数据为:", enc_pwd)
+        return enc_pwd
+    }
+
+    function send_request(url) {
+        var sendDate = (new Date()).getTime()
+        uname = document.getElementById('uname').value
+        passwd = md5(document.getElementById('pwd').value)
+        data2str = JSON.stringify({
+            'uname': uname,
+            'passwd': passwd
+        })
+        enc_data = encrypt_data(data2str)
+        send_data = {
+            _content: enc_data
+        }
+        console.log("send_data", send_data)
+        $.ajax({
+            type: "POST",
+            url: url,
+            dataType: "json",
+            data: send_data,
+            "success": function (res) {
+                var receiveDate = (new Date()).getTime();
+                console.log("consume time:", receiveDate - sendDate, "(ms)")
+                if (res.success == true) {
+                    alert(res.data)
+                } else {
+                    alert(res.data + ":" + res.error)
+                }
+            }
+        })
+    }
+
+    function login() {
+        send_request("http://localhost:5000/rsa_login")
+    }
+
+    function register() {
+         send_request("http://localhost:5000/rsa_register")
+    }
+</script>
+</html>
